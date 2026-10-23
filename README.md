@@ -1,4 +1,6 @@
-# RustMusic True Portable Builder v1.0
+# RustMusic True Portable Builder v1.1
+
+**v1.1: updater UI patch + Windows launcher compiler fix**
 
 **Windows x64 • GitHub Actions • ZIP-only • PortableApps.com Menu metadata • Original icon**
 
@@ -68,3 +70,21 @@ If the build fails, in GitHub Actions open the failed workflow run, click the fa
 ## Security and licensing
 
 This independent builder fetches the source from the project's official GitHub tags. A tag is used for reproducibility but it is not a signature verification. Source code from upstream remains under **GPL-3.0-only**; launcher source, source modifications, and license are included in the output's `Other/` folder. Redistribution must comply with the GPL, including corresponding-source obligations and appropriate attribution. This is not an official distribution or a signed application; SmartScreen might warn on the community-built unsigned launcher.
+
+## Updating v1.0 to v1.1 with GitHub Desktop
+
+1. Extract `RustMusic-True-Portable-Builder-v1.1.zip` to a temporary folder.
+2. Open GitHub Desktop and select your existing `RustMusic-True-Portable-Builder` repository.
+3. Choose **Repository → Show in Explorer**.
+4. Copy all the **contents** of the extracted v1.1 kit into the repository folder; replace matching files.
+5. Return to GitHub Desktop, type a commit summary such as `Fix RustMusic portable builder v1.1`, and choose **Commit to main**.
+6. Choose **Push origin**.
+7. On GitHub.com open **Actions → Build RustMusic True Portable → Run workflow**, with `v0.3.1`.
+
+### v1.1 fixes
+
+- Replaces the UI updater-banner component with a line-anchored, whitespace-tolerant regex (requires exactly one match). This fixes the `expected 1 occurrences, found 0: <UpdateBanner />` failure in the first actual GitHub Actions log.
+- Renames the native Windows launcher helper `exists()` to `pathExists()` to prevent a C++17 name collision with `std::filesystem::exists()`.
+- All v1.0 data isolation, icons, packaging, and conservative TraceGuard safeguards remain unchanged.
+
+The Windows compilation and first-run test must still be completed on GitHub Actions/Windows.

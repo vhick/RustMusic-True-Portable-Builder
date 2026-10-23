@@ -57,7 +57,11 @@ replace('src/routes/+layout.svelte',
 replace('src/routes/+layout.svelte',
     'import UpdateBanner from "#lib/components/updater/UpdateBanner.svelte";',
     '// PORTABLE BUILD: no installer update banner.')
-replace('src/routes/+layout.svelte', '   <UpdateBanner />', '   <!-- PORTABLE BUILD: updater disabled -->')
+# Match the component itself, not indentation that can differ between revisions.
+# Exactly one live UpdateBanner component must be present; otherwise fail safely.
+replace_re('src/routes/+layout.svelte',
+    r'^[ \t]*<UpdateBanner[ \t]*/>[ \t]*$',
+    '  <!-- PORTABLE BUILD: updater disabled -->')
 
 # The updater Rust plugin and auto-check/banner are removed. Any manual check
 # in settings uses existing graceful error handling; it cannot download/install.

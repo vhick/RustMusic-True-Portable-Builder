@@ -46,7 +46,7 @@ public:
   void line(const std::string& s) {if(file) {file<<dateStampUtf8()<<" | "<<s<<"\r\n";file.flush();}}
   static std::string dateStampUtf8() {return utf8(dateStamp());}
 };
-static bool exists(const fs::path& p) {std::error_code e;return fs::exists(p,e);}
+static bool pathExists(const fs::path& p) {std::error_code e;return fs::exists(p,e);}
 // Dynamic TraceGuard: enumerate only app-prefixed direct children of well-known
 // profile/ProgramData roots, never shared browser or Windows folders.
 static std::wstring lower(std::wstring s) {
@@ -140,7 +140,7 @@ static Footprint measure(const fs::path& p) {
 static void quarantineNewDirectory(const fs::path& p, bool previouslyExisted,const fs::path& quarantine,Logger& log) {
   if(p.empty())return;
   if(previouslyExisted) {log.line("PRESERVED PREEXISTING: "+utf8(p.wstring()));return;}
-  if(!exists(p))return;
+  if(!pathExists(p))return;
   std::error_code ec;
   if(!fs::is_directory(p,ec)||ec||!noSymlinks(p)) {
     log.line("WARNING cannot safely quarantine (not directory/reparse/permission): "+utf8(p.wstring()));return;
@@ -184,7 +184,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,LPWSTR,int) {
   Logger log(trace/L"TraceGuard.log");
   log.line("===== portable launch =====");
   log.line("Root: "+utf8(root.wstring()));
-  if(!exists(exe)){log.line("ERROR missing app executable: "+utf8(exe.wstring()));errorPopup(L"App\\RustMusic.exe not found. Re-extract the complete portable ZIP.");if(mutex)CloseHandle(mutex);return 3;}
+  if(!pathExists(exe)){log.line("ERROR missing app executable: "+utf8(exe.wstring()));errorPopup(L"App\\RustMusic.exe not found. Re-extract the complete portable ZIP.");if(mutex)CloseHandle(mutex);return 3;}
   // All known app-specific native Rust and Tauri paths are patched to use this root.
   SetEnvironmentVariableW(L"RUSTMUSIC_PORTABLE",L"1");
   SetEnvironmentVariableW(L"RUSTMUSIC_PORTABLE_DATA",portable.c_str());
@@ -197,7 +197,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,LPWSTR,int) {
     pathEnv(L"APPDATA",L"RustMusic"),
     pathEnv(L"LOCALAPPDATA",L"RustMusic")
   };
-  std::vector<bool> present;for(auto& p:candidates)present.push_back(exists(p));
+  std::vector<bool> present;for(auto& p:candidates)present.push_back(pathExists(p));
   const wchar_t* keys[]={L"Software\\RustMusic",L"Software\\com.larevuegeek.rustmusic",L"Software\\LaRevueGeeK\\RustMusic"};
   std::vector<bool> hadKeys;for(auto key:keys)hadKeys.push_back(registryKeyExists(key));
   bool hadRun=runValueExists(L"RustMusic"), hadPortableRun=runValueExists(L"RustMusicPortable");
