@@ -1,6 +1,6 @@
-# RustMusic True Portable Builder v1.1
+# RustMusic True Portable Builder v1.2
 
-**v1.1: updater UI patch + Windows launcher compiler fix**
+**v1.2: packaging false-failure fix (both executables already built successfully in v1.1)**
 
 **Windows x64 • GitHub Actions • ZIP-only • PortableApps.com Menu metadata • Original icon**
 
@@ -71,15 +71,23 @@ If the build fails, in GitHub Actions open the failed workflow run, click the fa
 
 This independent builder fetches the source from the project's official GitHub tags. A tag is used for reproducibility but it is not a signature verification. Source code from upstream remains under **GPL-3.0-only**; launcher source, source modifications, and license are included in the output's `Other/` folder. Redistribution must comply with the GPL, including corresponding-source obligations and appropriate attribution. This is not an official distribution or a signed application; SmartScreen might warn on the community-built unsigned launcher.
 
-## Updating v1.0 to v1.1 with GitHub Desktop
+## Updating your existing builder to v1.2 with GitHub Desktop
 
-1. Extract `RustMusic-True-Portable-Builder-v1.1.zip` to a temporary folder.
+1. Extract `RustMusic-True-Portable-Builder-v1.2.zip` to a temporary folder.
 2. Open GitHub Desktop and select your existing `RustMusic-True-Portable-Builder` repository.
 3. Choose **Repository → Show in Explorer**.
-4. Copy all the **contents** of the extracted v1.1 kit into the repository folder; replace matching files.
-5. Return to GitHub Desktop, type a commit summary such as `Fix RustMusic portable builder v1.1`, and choose **Commit to main**.
+4. Copy all the **contents** of the extracted v1.2 kit into the repository folder; replace matching files.
+5. Return to GitHub Desktop, type a commit summary such as `Fix RustMusic portable builder v1.2`, and choose **Commit to main**.
 6. Choose **Push origin**.
 7. On GitHub.com open **Actions → Build RustMusic True Portable → Run workflow**, with `v0.3.1`.
+
+### v1.2 fixes (GitHub Actions log 108122348725)
+
+- The v1.1 run compiled **both** `App/RustMusic.exe` and `RustMusicPortable.exe` successfully.
+- The packaging script printed `PACKAGE VALIDATION OK`, then GitHub Actions falsely failed it because the workflow compared `$LASTEXITCODE` after a PowerShell `.ps1` script. `$LASTEXITCODE` may be `$null` after a successful PowerShell script and must not be compared with numeric zero here.
+- Removes that invalid check and relies on terminating PowerShell errors (`$ErrorActionPreference = 'Stop'`).
+- Adds direct checks that required app, launcher, metadata, data placeholders and license files exist, and that both `.exe` files are nonempty, before uploading the ZIP artifact.
+- No RustMusic source or launcher changes compared with v1.1; the previously successful compilation remains identical.
 
 ### v1.1 fixes
 

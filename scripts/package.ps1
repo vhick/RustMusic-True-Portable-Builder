@@ -68,7 +68,7 @@ Copy-Item (Join-Path $Upstream 'PORTABLE_PATCH.diff') (Join-Path $base 'Other/So
 Copy-Item (Join-Path $BuilderRoot 'scripts/patch_portable.py') (Join-Path $base 'Other/Source-Patches/patch_portable.py') -Force
 Copy-Item (Join-Path $BuilderRoot 'launcher/RustMusicPortable.cpp') (Join-Path $base 'Other/Source-Patches/RustMusicPortable.cpp') -Force
 $info=@"
-RustMusic True Portable Builder 1.0
+RustMusic True Portable Builder 1.2
 Upstream source: https://github.com/larevuegeek/rustmusic-desktop
 Upstream release: https://github.com/larevuegeek/rustmusic-desktop/releases/tag/v$Version
 Compiled locally by GitHub Actions from the tag above, with source changes in Other/Source-Patches/.

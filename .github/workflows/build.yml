@@ -86,8 +86,33 @@ jobs:
           UPSTREAM_TAG: ${{ inputs.upstream_tag }}
         run: |
           $ErrorActionPreference = 'Stop'
-          ./scripts/package.ps1 -Upstream (Join-Path $pwd 'upstream') -Launcher (Join-Path $pwd 'launcher/RustMusicPortable.exe') -BuilderRoot $pwd -Version $env:UPSTREAM_TAG.Substring(1)
-          if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed.' }
+          # This is a PowerShell script, not a native executable. Its terminating
+          # errors already fail this step because ErrorActionPreference is Stop.
+          # Do NOT check $LASTEXITCODE: a successful .ps1 may leave it unset/null.
+          & ./scripts/package.ps1 -Upstream (Join-Path $pwd 'upstream') -Launcher (Join-Path $pwd 'launcher/RustMusicPortable.exe') -BuilderRoot $pwd -Version $env:UPSTREAM_TAG.Substring(1)
+          # Verify the deliverables directly before uploading the artifact.
+          $root = Join-Path $pwd 'dist/RustMusicPortable'
+          foreach ($relative in @(
+            'RustMusicPortable.exe',
+            'App/RustMusic.exe',
+            'App/AppInfo/appinfo.ini',
+            'App/AppInfo/appicon.ico',
+            'Data/Tauri/KEEP-PORTABLE-DATA.txt',
+            'Data/TraceGuard/KEEP-TRACEGUARD.txt',
+            'Other/LICENSE-RustMusic.txt'
+          )) {
+            $file = Join-Path $root $relative
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Portable package verification failed. Missing file: $file"
+            }
+          }
+          foreach ($exe in @('RustMusicPortable.exe', 'App/RustMusic.exe')) {
+            $file = Join-Path $root $exe
+            if ((Get-Item -LiteralPath $file).Length -le 0) {
+              throw "Portable package verification failed. Empty executable: $file"
+            }
+          }
+          Write-Host 'PACKAGE VERIFIED: application, launcher, data folders and PortableApps metadata are present.'
 
       # GitHub's artifact download itself is a ZIP, containing one top-level
       # RustMusicPortable/ folder. No second nested ZIP and no .paf.exe.
