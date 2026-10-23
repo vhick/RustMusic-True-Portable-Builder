@@ -1,0 +1,6 @@
+upstream/
+dist/
+*.obj
+*.res
+launcher/app.ico
+__pycache__/

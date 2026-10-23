@@ -1,0 +1,113 @@
+name: Build RustMusic True Portable
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: 'Official upstream release tag (initial verified version: v0.3.1)'
+        required: true
+        default: 'v0.3.1'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Windows x64 portable ZIP
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - name: Check out portable builder
+        uses: actions/checkout@v4
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up Rust stable MSVC
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Set up Visual Studio C++ native compiler
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Download official release and apply portable source patches
+        shell: pwsh
+        env:
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:UPSTREAM_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Use an official version tag such as v0.3.1.' }
+          git clone --quiet --depth 1 --branch $env:UPSTREAM_TAG https://github.com/larevuegeek/rustmusic-desktop.git upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to fetch the official upstream tag.' }
+          $version = $env:UPSTREAM_TAG.Substring(1)
+          python scripts/patch_portable.py --source upstream --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Portable source patch failed. Upstream may have changed. Do not silently continue.' }
+          git -C upstream diff --check
+          if ($LASTEXITCODE -ne 0) { throw 'Source patch whitespace check failed.' }
+          git -C upstream diff -- src-tauri src/routes src/lib/services/updater/updater.service.ts | Out-File -Encoding utf8 upstream/PORTABLE_PATCH.diff
+          Write-Host "Portable patch applied to $env:UPSTREAM_TAG"
+
+      - name: Compile source-built RustMusic for Windows (no installer)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw 'CMake is required by audio dependencies.' }
+          Push-Location upstream
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
+          npm run tauri -- build --no-bundle
+          if ($LASTEXITCODE -ne 0) { throw 'Tauri / Cargo build failed.' }
+          Pop-Location
+
+      - name: Compile native launcher with official RustMusic icon
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Copy-Item upstream/src-tauri/icons/icon.ico launcher/app.ico -Force
+          Push-Location launcher
+          & rc.exe /nologo /foapp.res app.rc
+          if ($LASTEXITCODE -ne 0) { throw 'Windows resource compiler failed.' }
+          & cl.exe /nologo /std:c++17 /EHsc /MT /O2 /W3 /utf-8 /DUNICODE /D_UNICODE /Fe:RustMusicPortable.exe RustMusicPortable.cpp app.res /link /SUBSYSTEM:WINDOWS advapi32.lib user32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Native launcher C++ compilation failed.' }
+          Pop-Location
+          if (!(Test-Path launcher/RustMusicPortable.exe)) { throw 'Launcher executable missing.' }
+
+      - name: Assemble and validate PortableApps folder
+        shell: pwsh
+        env:
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./scripts/package.ps1 -Upstream (Join-Path $pwd 'upstream') -Launcher (Join-Path $pwd 'launcher/RustMusicPortable.exe') -BuilderRoot $pwd -Version $env:UPSTREAM_TAG.Substring(1)
+          if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed.' }
+
+      # GitHub's artifact download itself is a ZIP, containing one top-level
+      # RustMusicPortable/ folder. No second nested ZIP and no .paf.exe.
+      - name: Upload portable application ZIP (1-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustMusicPortable-${{ inputs.upstream_tag }}-win64
+          path: dist/
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 6
+
+      - name: Include build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustMusic-build-diagnostics
+          path: |
+            upstream/PORTABLE_PATCH_SUMMARY.txt
+            upstream/PORTABLE_PATCH.diff
+            upstream/src-tauri/target/release/build/**/stderr
+          retention-days: 1
+          if-no-files-found: ignore
